@@ -1,0 +1,46 @@
+# Dockerfile
+FROM ubuntu:18.04
+# Maintainer: Your Name <
+RUN apt-get update
+
+# Disable dash
+RUN echo "dash dash/sh boolean false" | debconf-set-selections && \
+    DEBIAN_FRONTEND=noninteractive dpkg-reconfigure dash
+
+# Set timezone
+RUN apt-get install tzdata && \
+    ln -fs /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone && \
+    dpkg-reconfigure -f noninteractive tzdata
+
+# Install dependencies
+RUN apt-get install -y sudo locales lsb-release
+
+# Set locale
+RUN locale-gen en_US.UTF-8
+RUN update-locale
+
+# Add i386 architecture support for old toolchain
+RUN dpkg --add-architecture i386
+RUN apt-get update
+
+# Install required packages
+RUN apt-get install -y \
+    build-essential libssl-dev libncurses5-dev \
+    libc6:i386 libstdc++6:i386 zlib1g:i386 libc6-dev-i386 \
+    rsync wget unzip bc git python subversion dos2unix bsdmainutils
+
+# If need sudo
+RUN adduser --disabled-password --gecos '' tester \
+    && echo 'tester:tester123' | chpasswd \
+    && usermod -aG sudo tester
+
+RUN mkdir -p /opt/toolchain
+
+# Copy from the toolchain folder where this Dockerfile is located
+COPY toolchain/ /opt/toolchain/
+
+RUN chown -R tester:tester /opt/toolchain
+
+USER tester
+WORKDIR /project/test

@@ -1,0 +1,42 @@
+# Dockerfile
+FROM ubuntu
+
+RUN apt-get update && apt-get install -y sudo
+
+# If doesn't need sudo
+RUN adduser --disabled-password --gecos '' tester
+
+# If need sudo
+RUN adduser --disabled-password --gecos '' tester \
+    && echo 'tester:tester123' | chpasswd \
+    && usermod -aG sudo tester
+
+
+# Pass password with '--build-arg'
+#   $ docker build --build-arg USER_PASSWORD=password123 -t test-image .
+RUN adduser --disabled-password --gecos '' tester \
+    && echo "tester:${USER_PASSWORD}" | chpasswd \
+    && usermod -aG sudo tester
+# Passing a password to --build-arg is not completely secure, as it can leave the password in the build history.
+
+
+# Pass passwords as environment variables at runtime
+#   $ docker build -t test-image .
+#   $ docker run -e USER_PASSWORD=password123 -it test-image bash
+RUN adduser --disabled-password --gecos '' tester \
+    && usermod -aG sudo tester
+RUN echo "tester:$USER_PASSWORD" | chpasswd
+
+
+# Save the password to a file, pass it as '--secret' when docker builds
+#   $ echo "password123" > password.txt
+#   $ docker build --secret id=userpass,src=password.txt -t test-image .
+# To use '--secret' in a Dockerfile, buildkit must be enabled.
+#   $ DOCKER_BUILDKIT=1 docker build --secret id=userpass,src=password.txt -t test-image .
+
+
+# Disable sudo's password requirement.
+RUN echo 'tester ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/tester
+
+USER tester
+WORKDIR /home/tester
